@@ -74,5 +74,5 @@ child_min_price	The lowest price among the variations of the product
 - Data modeling concepts like star schema design.
 - Utilizing cloud-based data warehousing platforms (BigQuery).
 
+![Alt text](assets/diagram.png)
 
-![Alt text](images/diagram.png)
