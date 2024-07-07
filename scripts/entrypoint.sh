@@ -18,5 +18,10 @@ if ! airflow connections get 'postgres_main'; then
   --conn-schema $POSTGRES_DB
 fi
 
+airflow connections add 'google_cloud_main' \
+    --conn-type 'google_cloud_platform' \
+    --conn-extra '{"extra__google_cloud_platform__key_path": "/opt/airflow/credentials/gcp.json"}'
+
+
 # Start the Airflow webserver
 exec airflow webserver

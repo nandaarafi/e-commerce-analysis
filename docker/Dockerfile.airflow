@@ -1,12 +1,12 @@
 FROM apache/airflow:2.8.2-python3.9
 USER root
 
-# Install OpenJDK-11
+# Install OpenJDK-17
 RUN apt update && \
     apt-get install -y openjdk-17-jdk && \
     apt-get install -y ant && \
     apt-get install -y procps && \
-    apt-get clean;
+    apt-get clean
 
 # Set JAVA_HOME
 ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64
@@ -14,7 +14,9 @@ RUN export JAVA_HOME
 
 USER airflow
 
+# Install required Python packages
 RUN pip install \
+    kaggle \
     lxml \
     pyspark==3.3.2 \
     apache-airflow-providers-apache-spark \
@@ -25,4 +27,11 @@ RUN pip install \
     sqlalchemy-bigquery==1.6.1 \
     apache-airflow[google]
 
+
+USER root
+COPY --chown=airflow:root ./credentials /opt/airflow/credentials
+RUN chmod 600 /opt/airflow/credentials/kaggle.json
+
+USER airflow
+# Copy DAGs
 COPY --chown=airflow:root ./dags /opt/airflow/dags
