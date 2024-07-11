@@ -3,7 +3,6 @@ from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
 
-
 RAW_RESOURCES_PATH = f'raw_data/'
 TRANSFORMED_RESOURCES_PATH = f'transformed_data/'
 GCP_BUCKET_NAME = 'data-23539'
@@ -81,6 +80,9 @@ def merge_reviews_data(spark_session: SparkSession, reviews_schema: StructType) 
         return None
 
 
+def add_quotes(c):
+    return concat_ws('', lit('"'), col(c), lit('"'))
+
 def clean_transform(product_info: DataFrame, reviews: DataFrame) -> (DataFrame, DataFrame):
     """
     Cleans and transforms the product_info and reviews
@@ -97,11 +99,16 @@ def clean_transform(product_info: DataFrame, reviews: DataFrame) -> (DataFrame, 
         # - drop null value column
     for column in columns_to_cast_product:
         product_info = product_info.withColumn(column, col(column).cast(BooleanType()))
+
     clean_product_info = product_info.drop(*columns_to_drop_product)
 
     # Clean Reviews df
     clean_reviews_df = reviews.withColumn('is_recommended', col('is_recommended').cast(BooleanType()))
+    clean_reviews_df = clean_reviews_df.withColumn('submission_time',
+                                                   to_timestamp(col('submission_time'), 'yyyy-MM-dd'))
 
+
+    #For more detail why I choose this column, please check the notebook
     return clean_product_info, clean_reviews_df
 
 
@@ -110,25 +117,28 @@ if __name__ == "__main__":
     spark_session = init()
     product_info_schema, reviews_schema = schema()
 
-    product_info_df = spark_session.read.csv(f'gs://{GCP_BUCKET_NAME}/{RAW_RESOURCES_PATH}/product_info.csv',
+    #Spark Read CSV Raw Data
+    product_info_df = spark_session.read.option("escape", '"').option("quote", '"').csv(f'gs://{GCP_BUCKET_NAME}/{RAW_RESOURCES_PATH}/product_info.csv',
                                              header=True,
                                              schema=product_info_schema)
 
-    #Merge all review data
+    #Merge all review data and make it a DataFrame
     reviews_df = merge_reviews_data(spark_session, reviews_schema)
 
+    #Clean data
     clean_product_info, clean_reviews_df = clean_transform(product_info_df, reviews_df)
 
+    # Write the cleaned product DataFrame to GCS in overwrite mode
     clean_product_info.coalesce(1).write \
         .mode("overwrite") \
         .option("header", "true") \
-        .csv(f'gs://{GCP_BUCKET_NAME}/{TRANSFORMED_RESOURCES_PATH}/product_info')
+        .parquet(f'gs://{GCP_BUCKET_NAME}/{TRANSFORMED_RESOURCES_PATH}/product_info')
 
     # Write the cleaned reviews DataFrame to GCS in overwrite mode
     clean_reviews_df.coalesce(1).write \
         .mode("overwrite") \
         .option("header", "true") \
-        .csv(f'gs://{GCP_BUCKET_NAME}/{TRANSFORMED_RESOURCES_PATH}/reviews')
+        .parquet(f'gs://{GCP_BUCKET_NAME}/{TRANSFORMED_RESOURCES_PATH}/reviews')
 
     spark_session.stop()
 
