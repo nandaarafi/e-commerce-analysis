@@ -1,0 +1,24 @@
+Steps to write data to Parquet in cloud object storage:
+
+(1) compute data in memory (may involve spilling to disk)
+(2) serialize result set to Parquet format
+ - encode pages (e.g. dictionary encoding)
+ - compress pages (e.g. Snappy)
+ - index pages (calculate min-max stats)
+(3) transfer serialized data over wire: compute node(s) ➜ storage node
+(4) write serialized data to disk
+
+Steps to read data from Parquet in cloud object storage:
+
+(1) read metadata
+(2) read serialized data from disk (use metadata for predicate/projection pushdown to only fetch pages needed for query at hand)
+(3) transfer serialized data over wire: storage node ➜ compute node(s)
+(4) deserialize to in memory format:
+ - decompress
+ - decode
+
+Some writes (UPDATE/DELETE/MERGE) require a read.
+
+In that case, both the read and write steps are executed in sequence.
+
+It's hard to achieve low latency when using Parquet (or Parquet-based table formats) on cloud object stores because of all these steps.

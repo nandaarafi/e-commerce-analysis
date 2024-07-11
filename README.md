@@ -16,6 +16,8 @@ This project outlines a data pipeline for an E-commerce company to extract, tran
 - Getting some insight
 
 ## Data Structure
+### Product Data Content
+
 `product_id`:	The unique identifier for the product from the site
 
 `product_name`:	The full name of the product
@@ -68,7 +70,41 @@ online_only	Indicates whether the product is only sold online or not (1-true, 0-
 child_max_price	The highest price among the variations of the product
 child_min_price	The lowest price among the variations of the product
 
-### Technologie Used
+### Review content
+
+`author_id`:	The unique identifier for the author of the review on the website
+rating	The rating given by the author for the product on a scale of 1 to 5
+
+`is_recommended`:	Indicates if the author recommends the product or not (1-true, 0-false)
+
+`helpfulness`:	The ratio of all 
+
+`ratings` to positive ratings for the review: 
+
+`helpfulness`:  = total_pos_feedback_count / total_feedback_count
+
+`total_feedback_count`: 	Total number of feedback (positive and negative ratings) left by users for the review
+
+`total_neg_feedback_count`:	The number of users who gave a negative rating for the review
+
+`total_pos_feedback`: _count	The number of users who gave a positive rating for the review
+
+`submission_time`:	Date the review was posted on the website in the 'yyyy-mm-dd' format
+
+`review_text`:	The main text of the review written by the author
+
+`review_title`: 	The title of the review written by the author
+
+`skin_tone`: 	Author's skin tone (e.g. fair, tan, etc.)
+
+`eye_color`:	Author's eye color (e.g. brown, green, etc.)
+
+`skin_type`: 	Author's skin type (e.g. combination, oily, etc.)
+
+`hair_color`: 	Author's hair color (e.g. brown, auburn, etc.)
+
+`product_id`: 	The unique identifier for the product on the website
+### Technology Used
 - Data engineering workflows using Airflow.
 - Data wrangling and transformation techniques with PySpark.
 - Data modeling concepts like star schema design.
@@ -76,3 +112,8 @@ child_min_price	The lowest price among the variations of the product
 
 ![Alt text](assets/diagram.png)
 
+- Get Data from kaggle
+- Save the raw data into parquet
+- Clean and transform the data into defined schema
+- Load it into BigQuery Data Warehouse
+- Get Actionable Insight from Looker Studio
