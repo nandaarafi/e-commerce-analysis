@@ -1,56 +1,17 @@
 from airflow import DAG
-from airflow.utils.dates import days_ago
 from airflow.providers.google.cloud.operators.dataproc import DataprocCreateClusterOperator, DataprocCreateBatchOperator
 from airflow.providers.google.cloud.operators.dataproc import DataprocSubmitJobOperator
 from airflow.providers.google.cloud.operators.dataproc import DataprocDeleteClusterOperator
 from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
-import os
-from dotenv import load_dotenv
-from pathlib import Path
-
-dotenv_path = Path('/opt/airflow/resources/.env')
-load_dotenv(dotenv_path=dotenv_path)
-
-DATAPROC_CLUSTER_NAME = os.getenv('DATAPROC_CLUSTER_NAME')
-DATAPROC_REGION = os.getenv('DATAPROC_REGION')
-GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
-PYSPARK_JOB_LOCATION = os.getenv('PYSPARK_JOB_LOCATION')
-GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME')
-GCP_CONN_ID = 'google_cloud_main'
-TRANSFORMED_RESOURCES_PATH = f'transformed_data/'
-
-
-CLUSTER_CONFIG = {
-    "master_config": {
-        "num_instances": 1,
-        "machine_type_uri": "n2-standard-2",
-        "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 500},
-    },
-    "worker_config": {
-        "num_instances": 2,
-        "machine_type_uri": "n2-standard-2",
-        "disk_config": {"boot_disk_type": "pd-standard", "boot_disk_size_gb": 500},
-    },
-    'gce_cluster_config': {
-                'subnetwork_uri': 'default',
-                'internal_ip_only': False,  # Set this to False
-            },
-
-}
-
-
-PYSPARK_JOB = {
-    "reference": {"project_id": GCP_PROJECT_ID},
-    "placement": {"cluster_name": DATAPROC_CLUSTER_NAME},
-    "pyspark_job": {"main_python_file_uri": f'{PYSPARK_JOB_LOCATION}/transform_data.py'},
-}
-
-default_args = {
-    'owner': 'Name',
-    'depends_on_past': False,
-    'start_date': days_ago(1),
-    'retries': 0,
-}
+from utils.config import (CLUSTER_CONFIG,
+                          PYSPARK_JOB,
+                          default_args,
+                          GCS_BUCKET_NAME,
+                          TRANSFORMED_RESOURCES_PATH,
+                          GCP_PROJECT_ID,
+                          DATAPROC_CLUSTER_NAME,
+                          DATAPROC_REGION,
+                          GCP_CONN_ID)
 
 with DAG(
     "dataproc_airflow_gcp_to_gbq",
@@ -81,21 +42,26 @@ with DAG(
     gsc_to_gbq_product = GCSToBigQueryOperator(
         task_id="transfer_product_data_to_bigquery",
         bucket=GCS_BUCKET_NAME,
-        source_objects =[f"{TRANSFORMED_RESOURCES_PATH}product_info/*.csv"],
+        source_objects =[f"{TRANSFORMED_RESOURCES_PATH}product_info/*.snappy.parquet"],
         destination_project_dataset_table =f"{GCP_PROJECT_ID}:e_commerce_dw.product", # bigquery table
-        source_format = "csv",
+        source_format = "parquet",
         gcp_conn_id=GCP_CONN_ID,
         project_id=GCP_PROJECT_ID,
-        write_disposition="write_append"
+        write_disposition="WRITE_TRUNCATE",
+        skip_leading_rows=1,
+
     )
+
     gsc_to_gbq_reviews = GCSToBigQueryOperator(
         task_id="transfer_review_data_to_bigquery",
         bucket=GCS_BUCKET_NAME,
-        source_objects =[f"{TRANSFORMED_RESOURCES_PATH}reviews/*.csv"],
+        source_objects =[f"{TRANSFORMED_RESOURCES_PATH}reviews/*.snappy.parquet"],
         destination_project_dataset_table ="e_commerce_dw.review", # bigquery table
-        source_format = "csv",
+        source_format = "parquet",
         gcp_conn_id=GCP_CONN_ID,
-        project_id=GCP_PROJECT_ID
+        project_id=GCP_PROJECT_ID,
+        write_disposition="WRITE_TRUNCATE",
+        skip_leading_rows=1,
     )
 
     delete_cluster = DataprocDeleteClusterOperator(
@@ -106,6 +72,4 @@ with DAG(
         gcp_conn_id=GCP_CONN_ID
     )
 
-
-
-    # create_cluster >> submit_job >> [delete_cluster,gsc_to_gbq_product, gsc_to_gbq_reviews]
+    create_cluster >> submit_job >> [gsc_to_gbq_product, gsc_to_gbq_reviews] >> delete_cluster
