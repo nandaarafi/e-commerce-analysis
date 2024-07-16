@@ -106,14 +106,30 @@ rating	The rating given by the author for the product on a scale of 1 to 5
 `product_id`: 	The unique identifier for the product on the website
 ### Technology Used
 - Data engineering workflows using Airflow.
-- Data wrangling and transformation techniques with PySpark.
-- Data modeling concepts like star schema design.
+- Download kaggle data using Kaggle API then store the raw data to Google Cloud Storage
+- Data transformation techniques with Dataproc using Pyspark engine.
 - Utilizing cloud-based data warehousing platforms (BigQuery).
 
 ![Alt text](assets/diagram.png)
 
 - Get Data from kaggle
 - Save the raw data into parquet
-- Clean and transform the data into defined schema
+- Clean and transform the data 
 - Load it into BigQuery Data Warehouse
 - Get Actionable Insight from Looker Studio
+
+## How to Start this project
+1. First create your GCP account and get your service account credential with json format
+2. Enable all the API that needed, Cloud Storage, Dataproc, and BigQuery
+3. Place your gcp.json to credentials
+4. Create your Kaggle account then get the Kaggle API with json format
+5. Place your kaggle.json to credentials folder
+6. Run the docker container from root project with this command
+```
+make postgres
+```
+```
+make airflow
+```
+7. Start your dag manually or automaticaly
+8. Done, you're successfully running the pipeline
